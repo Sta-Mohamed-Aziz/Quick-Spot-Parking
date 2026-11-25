@@ -1,0 +1,81 @@
+<section class="reports" aria-labelledby="driver-reports-title">
+  <div class="head">
+    <h2 id="driver-reports-title">Driver reports</h2>
+    <button type="button" class="ghost" (click)="load()" [disabled]="loading || busy">Refresh</button>
+  </div>
+
+  <div class="filters" role="group" aria-label="Filter driver reports">
+    @for (option of filters; track option) {
+      <button type="button" [class.active]="filter === option" [attr.aria-pressed]="filter === option"
+              (click)="filter = option; confirmRefundId = null">{{ option }}</button>
+    }
+  </div>
+
+  @if (message) { <p class="banner success" role="status">{{ message }}</p> }
+  @if (error) { <p class="banner danger" role="alert">{{ error }}</p> }
+
+  @if (loading) {
+    <p class="empty" role="status">Loading reports…</p>
+  } @else {
+    @for (report of visibleReports; track report.id) {
+      <article class="card" [class.pending]="!report.resolvedAt">
+        <div class="info">
+          <div class="title">
+            <strong>{{ labels[report.type] }}</strong>
+            @if (report.resolvedAt) { <span class="pill success">Resolved</span> }
+          </div>
+          <span>{{ report.userName || (report.userId ? 'User #' + report.userId : 'Unknown user') }}</span>
+          @if (report.userEmail) { <span class="muted small">{{ report.userEmail }}</span> }
+          <span class="muted small">
+            {{ report.areaName }} · Spot {{ report.spotNumber }}
+            @if (report.reservationId !== null) { · Reservation #{{ report.reservationId }} }
+          </span>
+          <span class="muted small">Reported {{ report.reportedAt | date: 'd MMM y, HH:mm' }}</span>
+          @if (report.description) { <p class="note">{{ report.description }}</p> }
+          @if (report.resolvedAt) {
+            <span class="muted small">
+              Resolved {{ report.resolvedAt | date: 'd MMM y, HH:mm' }}
+              @if (report.resolvedByName) { by {{ report.resolvedByName }} }
+            </span>
+          }
+          @if (report.refundAmount !== null && report.currency) {
+            <span class="amount">{{ report.refundAmount | currency: report.currency : 'code' }} credited</span>
+          }
+          @if (confirmRefundId === report.id) {
+            <div class="refund-confirmation">
+              @if (report.activeReservation) {
+                <p>Credit the time already spent when you confirm. The reservation stays active.</p>
+              } @else {
+                <p>Credit the full charge for this completed stay.</p>
+              }
+              <div class="actions">
+                <button type="button" class="secondary" (click)="confirmRefundId = null" [disabled]="busy">Cancel</button>
+                <button type="button" class="success" (click)="resolve(report, true)" [disabled]="busy">Confirm refund</button>
+              </div>
+            </div>
+          }
+        </div>
+        @if (!report.resolvedAt && confirmRefundId !== report.id) {
+          <div class="side">
+            @if (report.refundableAmount !== null && report.currency) {
+              <span class="muted small">
+                {{ report.activeReservation ? 'Estimated credit' : 'Available credit' }}
+                {{ report.refundableAmount | currency: report.currency : 'code' }}
+              </span>
+            }
+            <div class="actions">
+              <button type="button" class="secondary" (click)="resolve(report, false)" [disabled]="busy">Mark resolved</button>
+              @if (report.refundableAmount !== null) {
+                <button type="button" class="success" (click)="confirmRefundId = report.id" [disabled]="busy">Resolve with refund</button>
+              }
+            </div>
+          </div>
+        }
+      </article>
+    } @empty {
+      @if (!error) {
+        <p class="empty">{{ filter === 'Open' ? 'No open driver reports.' : 'No driver reports here.' }}</p>
+      }
+    }
+  }
+</section>
