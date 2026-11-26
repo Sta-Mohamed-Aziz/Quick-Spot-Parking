@@ -6,11 +6,14 @@ import com.parking.dto.StatsDtos.EarningsBucket;
 import com.parking.dto.StatsDtos.EarningsStats;
 import com.parking.dto.StatsDtos.EntryStats;
 import com.parking.dto.StatsDtos.Period;
+import com.parking.entity.ParkingArea;
 import com.parking.entity.Reservation;
 import com.parking.repository.ParkingAreaRepository;
 import com.parking.repository.ReservationRepository;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -19,7 +22,6 @@ import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Comparator;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -49,7 +51,7 @@ public class StatsService {
     }
 
     /** Last 30 days, 12 months or 5 years, oldest first, with today / this month / this year totals. */
-    public EarningsStats earnings(Period period) {
+    public EarningsStats earnings(int adminId, Period period) {
         LocalDate today = LocalDate.now(zone);
         List<LocalDate> starts = new ArrayList<>();
         switch (period) {
@@ -59,7 +61,7 @@ public class StatsService {
         }
         LocalDate from = starts.get(0).isBefore(today.withDayOfYear(1)) ? starts.get(0) : today.withDayOfYear(1);
 
-        List<Reservation> paid = reservationRepository.findByEndedAtGreaterThanEqual(startOf(from)).stream()
+        List<Reservation> paid = reservationRepository.findEarningsByAdmin(adminId, startOf(from)).stream()
                 .filter(r -> r.getAmount() != null)
                 .toList();
 
@@ -81,13 +83,18 @@ public class StatsService {
                 buckets);
     }
 
-    /** Entries per day over the last {@code days} days, for one area ({@code areaId}) or all of them (null). */
-    public EntryStats entries(Integer areaId, int days) {
+    /** Entries per day over the last {@code days} days, for one owned area or all areas owned by the admin. */
+    public EntryStats entries(int adminId, Integer areaId, int days) {
+        List<ParkingArea> ownedAreas = parkingAreaRepository.findManagedAreas(adminId);
+        if (areaId != null && ownedAreas.stream().noneMatch(area -> areaId.equals(area.getId()))) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Parking area not found");
+        }
+
         int span = Math.max(1, Math.min(days, 366));
         LocalDate today = LocalDate.now(zone);
         LocalDate first = today.minusDays(span - 1L);
 
-        List<Reservation> entered = reservationRepository.findByStartedAtGreaterThanEqual(startOf(first));
+        List<Reservation> entered = reservationRepository.findEntriesByAdmin(adminId, startOf(first));
         List<Reservation> selected = entered.stream()
                 .filter(r -> areaId == null || areaId.equals(r.getAreaId()))
                 .toList();
@@ -103,19 +110,14 @@ public class StatsService {
                 .max(Comparator.comparingLong(DailyEntries::entries))
                 .orElse(null);
 
-        // Every area, even without entries, so the admin can compare them; busiest first.
-        Map<Integer, String> names = new LinkedHashMap<>();
-        parkingAreaRepository.findAll().forEach(a -> names.put(a.getId(), a.getName()));
-        entered.forEach(r -> names.putIfAbsent(r.getAreaId(), r.getAreaName()));
+        // Include owned areas with zero entries so the admin can compare them.
         Map<Integer, List<Reservation>> byArea = entered.stream()
-                .filter(r -> r.getAreaId() != null)
                 .collect(Collectors.groupingBy(Reservation::getAreaId));
-        List<AreaEntries> areas = names.entrySet().stream()
-                .filter(e -> e.getKey() != null)
-                .map(e -> {
-                    List<Reservation> in = byArea.getOrDefault(e.getKey(), List.of());
+        List<AreaEntries> areas = ownedAreas.stream()
+                .map(area -> {
+                    List<Reservation> in = byArea.getOrDefault(area.getId(), List.of());
                     long todayCount = in.stream().filter(r -> dateOf(r.getStartedAt()).equals(today)).count();
-                    return new AreaEntries(e.getKey(), e.getValue(), todayCount, in.size(), round((double) in.size() / span));
+                    return new AreaEntries(area.getId(), area.getName(), todayCount, in.size(), round((double) in.size() / span));
                 })
                 .sorted(Comparator.comparingLong(AreaEntries::total).reversed().thenComparing(AreaEntries::areaName,
                         Comparator.nullsLast(Comparator.naturalOrder())))

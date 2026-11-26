@@ -1,13 +1,18 @@
 <div class="page">
   <div class="row" style="justify-content: space-between">
     <h1>Parking areas</h1>
-    <a routerLink="/counter">Ticket counter →</a>
+    <div class="row">
+      <a routerLink="/counter">Ticket counter →</a>
+      <button type="button" (click)="logout()">Log out</button>
+    </div>
   </div>
 
-  <form class="row" (ngSubmit)="create()">
-    <input name="name" [(ngModel)]="newName" placeholder="New parking area name" />
-    <button type="submit" [disabled]="!newName.trim()">Create</button>
-  </form>
+  @if (auth.isPlatformAdmin) {
+    <form class="row" (ngSubmit)="create()">
+      <input name="name" [(ngModel)]="newName" placeholder="New parking area name" />
+      <button type="submit" [disabled]="!newName.trim()">Create</button>
+    </form>
+  }
 
   @if (error) {
     <p class="error">{{ error }}</p>
@@ -25,7 +30,10 @@
         <td>{{ area.name }}</td>
         <td>{{ area.capacity }}</td>
         <td>{{ area.occupancyRate | percent }}</td>
-        <td><a [routerLink]="['/parking-areas', area.id]">Edit layout</a></td>
+        <td>
+          <a [routerLink]="['/parking-areas', area.id]">Edit layout</a>
+          · <a [routerLink]="['/parking-areas', area.id, 'staff']">Manage staff</a>
+        </td>
       </tr>
     } @empty {
       <tr>
@@ -35,7 +43,9 @@
   </table>
 
   <app-admin-stats />
-  <app-admin-issues />
-  <app-admin-appeals />
-  <app-admin-reports />
+  @if (auth.isPlatformAdmin) {
+    <app-admin-issues />
+    <app-admin-appeals />
+    <app-admin-reports />
+  }
 </div>

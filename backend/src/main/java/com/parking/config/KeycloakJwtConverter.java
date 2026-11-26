@@ -4,14 +4,14 @@ import com.parking.entity.Role;
 import com.parking.entity.User;
 import com.parking.repository.UserRepository;
 import com.parking.service.PasswordEncoderService;
+import com.parking.service.StaffPermissions;
+import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.core.convert.converter.Converter;
 import org.springframework.security.authentication.AbstractAuthenticationToken;
 import org.springframework.security.authentication.DisabledException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.GrantedAuthority;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.stereotype.Component;
 
@@ -26,6 +26,7 @@ import java.util.UUID;
  * The local account is found by e-mail and created on the first call if it does not exist yet.
  */
 @Component
+@RequiredArgsConstructor
 public class KeycloakJwtConverter implements Converter<Jwt, AbstractAuthenticationToken> {
 
     private static final Logger log = LoggerFactory.getLogger(KeycloakJwtConverter.class);
@@ -33,24 +34,24 @@ public class KeycloakJwtConverter implements Converter<Jwt, AbstractAuthenticati
 
     private final UserRepository userRepository;
     private final PasswordEncoderService passwordEncoder;
-
-    public KeycloakJwtConverter(UserRepository userRepository, PasswordEncoderService passwordEncoder) {
-        this.userRepository = userRepository;
-        this.passwordEncoder = passwordEncoder;
-    }
+    private final StaffPermissions staffPermissions;
 
     @Override
     public AbstractAuthenticationToken convert(Jwt jwt) {
         List<String> roles = realmRoles(jwt);
-        User user = findOrCreateUser(jwt, roles);
+        Role baseRole = roles.contains("ADMIN") ? Role.ADMIN
+                : roles.contains("TICKET_COUNTER") ? Role.TICKET_COUNTER
+                : roles.contains("EMPLOYEE") ? Role.EMPLOYEE
+                : roles.contains("USER") ? Role.USER : null;
+        User user = findOrCreateUser(jwt, baseRole);
         if (user.isBlocked()) {
             throw new DisabledException("Your account is blocked. Please contact support");
         }
-        Collection<GrantedAuthority> authorities = roles.stream()
-                .<GrantedAuthority>map(role -> new SimpleGrantedAuthority("ROLE_" + role))
-                .toList();
+        if (baseRole == Role.USER && user.getRole() == Role.EMPLOYEE) {
+            baseRole = Role.EMPLOYEE;
+        }
         UsernamePasswordAuthenticationToken authentication =
-                new UsernamePasswordAuthenticationToken(user.getId(), jwt, authorities);
+                staffPermissions.authenticate(user, jwt, baseRole);
         authentication.setDetails(jwt.getClaims());
         return authentication;
     }
@@ -68,7 +69,7 @@ public class KeycloakJwtConverter implements Converter<Jwt, AbstractAuthenticati
                 .toList();
     }
 
-    private User findOrCreateUser(Jwt jwt, List<String> roles) {
+    private User findOrCreateUser(Jwt jwt, Role role) {
         String email = jwt.getClaimAsString("email");
         if (email == null || email.isBlank()) {
             // Service accounts (client credentials) have no e-mail.
@@ -76,8 +77,6 @@ public class KeycloakJwtConverter implements Converter<Jwt, AbstractAuthenticati
         }
         String finalEmail = email;
         return userRepository.findByEmailIgnoreCase(email).orElseGet(() -> {
-            Role role = roles.contains("ADMIN") ? Role.ADMIN
-                    : roles.contains("TICKET_COUNTER") ? Role.TICKET_COUNTER : Role.USER;
             String name = jwt.getClaimAsString("name") != null ? jwt.getClaimAsString("name")
                     : jwt.getClaimAsString("preferred_username");
             // The password is never used: this account signs in through Keycloak.

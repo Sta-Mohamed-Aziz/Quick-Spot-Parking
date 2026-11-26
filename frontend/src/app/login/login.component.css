@@ -75,8 +75,9 @@ h1 {
   cursor: default;
 }
 
-.note {
+.mode-btn {
   margin-top: 20px;
-  font-size: 12px;
-  color: #a1a1aa;
+  background: transparent;
+  color: #2563eb;
+  border: 0;
 }

@@ -1,5 +1,6 @@
 package com.parking.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
@@ -23,6 +24,11 @@ public class ParkingArea {
 
     @Column(unique = true)
     private String name;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "admin_id", foreignKey = @ForeignKey(name = "fk_parking_area_admin"))
+    @JsonIgnore
+    private User admin;
 
     // PostgreSQL text avoids Hibernate's OID-based large-object handling for @Lob.
     @Column(columnDefinition = "text")

@@ -10,6 +10,7 @@ export interface User {
   isHandicapped: boolean;
   isEvOwner: boolean;
   isBlocked: boolean;
+  platformAdmin: boolean;
 }
 
 export interface LoginRequest {
@@ -20,8 +21,7 @@ export interface LoginRequest {
 const STORAGE_KEY = 'parking_admin_user';
 const API_BASE = 'http://localhost:8080/api';
 
-/** Accounts allowed in this web app. Drivers (USER) use the mobile app. */
-const STAFF_ROLES = ['ADMIN', 'TICKET_COUNTER'];
+const WEB_ROLES = ['ADMIN', 'TICKET_COUNTER', 'EMPLOYEE'];
 
 @Injectable({ providedIn: 'root' })
 export class AuthService {
@@ -52,8 +52,8 @@ export class AuthService {
     return this._currentUser?.role === 'TICKET_COUNTER';
   }
 
-  /** Where a user lands after signing in: admins manage areas, ticket counters work at their desk. */
   get homeUrl(): string {
+    if (this._currentUser?.role === 'EMPLOYEE') return '/request-access';
     return this.isTicketCounter ? '/counter' : '/';
   }
 
@@ -61,42 +61,58 @@ export class AuthService {
     return this._currentUser?.role === 'ADMIN';
   }
 
+  get isPlatformAdmin(): boolean {
+    return this._currentUser?.platformAdmin === true;
+  }
+
   login(email: string, password: string): Observable<User> {
     return this.http.get(`${API_BASE}/auth/csrf`).pipe(
       switchMap(() => this.http.post<User>(`${API_BASE}/auth/login`, { email, password })),
-      tap(user => {
-        if (!STAFF_ROLES.includes(user.role)) {
-          throw new Error('Access denied: staff accounts only');
-        }
-        this._currentUser = user;
-        sessionStorage.setItem(STORAGE_KEY, JSON.stringify(user));
-      })
+      tap(user => this.rememberWebUser(user))
+    );
+  }
+
+  register(name: string, email: string, password: string): Observable<User> {
+    return this.http.post<User>(`${API_BASE}/auth/staff-register`, { name, email, password }).pipe(
+      tap(user => this.rememberWebUser(user))
     );
   }
 
   validateSession(): Observable<boolean> {
-    if (!this._currentUser || !STAFF_ROLES.includes(this._currentUser.role)) return of(false);
+    const current = this._currentUser;
+    if (!current || !WEB_ROLES.includes(current.role)) return of(false);
     return this.http.get<User>(`${API_BASE}/auth/me`).pipe(
       tap(user => {
-        this._currentUser = user;
-        sessionStorage.setItem(STORAGE_KEY, JSON.stringify(user));
+        if (user.id !== current.id) throw new Error('The signed-in account changed');
+        this.rememberWebUser(user);
       }),
       map(() => true),
       catchError(() => {
-        this._currentUser = null;
-        sessionStorage.removeItem(STORAGE_KEY);
+        this.clearUser();
         return of(false);
       })
     );
   }
 
-  logout(): void {
-    this.http.get(`${API_BASE}/auth/csrf`).pipe(
+  logout(): Observable<void> {
+    this.clearUser();
+    return this.http.get(`${API_BASE}/auth/csrf`).pipe(
       switchMap(() => this.http.post<void>(`${API_BASE}/auth/logout`, {})),
       catchError(() => of(undefined))
-    ).subscribe(() => {
-      this._currentUser = null;
-      sessionStorage.removeItem(STORAGE_KEY);
-    });
+    );
+  }
+
+  private rememberWebUser(user: User) {
+    if (!WEB_ROLES.includes(user.role) || user.isBlocked) {
+      this.clearUser();
+      throw new Error('Access denied');
+    }
+    this._currentUser = user;
+    sessionStorage.setItem(STORAGE_KEY, JSON.stringify(user));
+  }
+
+  private clearUser() {
+    this._currentUser = null;
+    sessionStorage.removeItem(STORAGE_KEY);
   }
 }

@@ -17,29 +17,40 @@ export class LoginComponent {
   private route = inject(ActivatedRoute);
 
   email = '';
+  name = '';
   password = '';
   error = '';
   loading = false;
+  registering = false;
+
+  toggleRegistration() {
+    this.registering = !this.registering;
+    this.error = '';
+    this.password = '';
+  }
 
   submit() {
     this.error = '';
 
-    if (!this.email.trim() || !this.password) {
-      this.error = 'Please enter your email and password.';
+    if (!this.email.trim() || !this.password || (this.registering && !this.name.trim())) {
+      this.error = this.registering ? 'Please enter your name, email and password.' : 'Please enter your email and password.';
       return;
     }
 
     this.loading = true;
-    this.auth.login(this.email.trim(), this.password).subscribe({
+    const request = this.registering
+      ? this.auth.register(this.name.trim(), this.email.trim(), this.password)
+      : this.auth.login(this.email.trim(), this.password);
+    request.subscribe({
       next: () => {
         this.loading = false;
         const returnUrl = this.route.snapshot.queryParamMap.get('returnUrl');
-        this.router.navigateByUrl(returnUrl?.startsWith('/') ? returnUrl : this.auth.homeUrl);
+        this.router.navigateByUrl(!this.registering && returnUrl?.startsWith('/') ? returnUrl : this.auth.homeUrl);
       },
       error: (err: unknown) => {
         this.loading = false;
         if (err instanceof Error && err.message.startsWith('Access denied')) {
-          this.error = 'Access denied. Only administrator and ticket counter accounts can access this application.';
+          this.error = 'Use a staff account to sign in here.';
         } else if (err instanceof HttpErrorResponse) {
           if (err.status === 0) {
             this.error = 'Cannot reach the server. Make sure the backend is running.';

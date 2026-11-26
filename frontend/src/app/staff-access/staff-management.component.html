@@ -1,0 +1,65 @@
+<main class="page access-page">
+  <a routerLink="/">Back to parking areas</a>
+  <h1>{{ areaName ? 'Manage staff for ' + areaName : 'Manage staff' }}</h1>
+  @if (error) { <p class="error" role="alert">{{ error }}</p> }
+  @if (message) { <p class="message" role="status">{{ message }}</p> }
+
+  @if (areaName) {
+    <section>
+      <h2>Add staff by email</h2>
+      <form class="access-form" #grantForm="ngForm" (ngSubmit)="grant()">
+        <label>Account email
+          <input name="email" type="email" [(ngModel)]="email" required email maxlength="255" [disabled]="busy" />
+        </label>
+        <label>Role
+          <select name="role" [(ngModel)]="role" [disabled]="busy">
+            <option value="TICKET_COUNTER">Ticket counter</option>
+            <option value="ADMIN">Administrator</option>
+          </select>
+        </label>
+        <button type="submit" [disabled]="busy || !grantForm.valid">Grant access</button>
+      </form>
+    </section>
+
+    <section>
+      <h2>Pending requests</h2>
+      @if (requests.length) {
+        <table>
+          <thead><tr><th>Account</th><th>Requested role</th><th>Action</th></tr></thead>
+          <tbody>
+            @for (request of requests; track request.id) {
+              <tr>
+                <td><strong>{{ request.name }}</strong><br><span class="hint">{{ request.email }}</span></td>
+                <td>{{ roleName[request.requestedRole!] }}</td>
+                <td><button type="button" (click)="approve(request)" [disabled]="busy">Approve</button></td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      } @else {
+        <p class="hint">No requests are waiting for approval.</p>
+      }
+    </section>
+
+    <section>
+      <h2>Assigned staff</h2>
+      @if (staff.length) {
+        <table>
+          <thead><tr><th>Account</th><th>Role</th></tr></thead>
+          <tbody>
+            @for (entry of staff; track entry.id) {
+              <tr>
+                <td><strong>{{ entry.name }}</strong><br><span class="hint">{{ entry.email }}</span></td>
+                <td>{{ roleName[entry.grantedRole!] }}</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      } @else {
+        <p class="hint">No staff have been added to this area.</p>
+      }
+    </section>
+  } @else if (busy) {
+    <p class="hint" role="status">Loading staff…</p>
+  }
+</main>

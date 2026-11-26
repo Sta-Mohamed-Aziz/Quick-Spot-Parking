@@ -85,15 +85,16 @@ public class AdminReportController {
 
     /** SCRUM-81: period is DAY (last 30 days), MONTH (last 12 months) or YEAR (last 5 years). */
     @GetMapping("/stats/earnings")
-    public EarningsStats earnings(@RequestParam(defaultValue = "DAY") Period period) {
-        return statsService.earnings(period);
+    public EarningsStats earnings(@RequestParam(defaultValue = "DAY") Period period, Authentication authentication) {
+        return statsService.earnings(adminId(authentication), period);
     }
 
-    /** SCRUM-80: entries per day; without areaId, for all parking areas. */
+    /** SCRUM-80: entries per day across the admin's parking areas, or for a selected area. */
     @GetMapping("/stats/entries")
     public EntryStats entries(@RequestParam(required = false) Integer areaId,
-                              @RequestParam(defaultValue = "30") int days) {
-        return statsService.entries(areaId, days);
+                              @RequestParam(defaultValue = "30") int days,
+                              Authentication authentication) {
+        return statsService.entries(adminId(authentication), areaId, days);
     }
 
     private static int adminId(Authentication authentication) {

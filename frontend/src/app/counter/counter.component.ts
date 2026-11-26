@@ -122,7 +122,6 @@ export class CounterComponent implements OnInit {
   }
 
   logout() {
-    this.auth.logout();
-    this.router.navigate(['/login']);
+    this.auth.logout().subscribe(() => this.router.navigate(['/login']));
   }
 }

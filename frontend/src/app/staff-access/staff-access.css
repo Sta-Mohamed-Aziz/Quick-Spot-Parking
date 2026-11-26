@@ -1,0 +1,35 @@
+.access-page {
+  max-width: 860px;
+}
+
+.access-heading,
+.access-form {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.access-form {
+  align-items: end;
+  justify-content: flex-start;
+  padding: 16px;
+  border: 1px solid #e4e4e7;
+  border-radius: 8px;
+  background: white;
+}
+
+.access-form label {
+  flex: 1 1 180px;
+  font-weight: 500;
+}
+
+section {
+  margin-top: 24px;
+}
+
+.secondary {
+  background: white;
+  color: #18181b;
+}

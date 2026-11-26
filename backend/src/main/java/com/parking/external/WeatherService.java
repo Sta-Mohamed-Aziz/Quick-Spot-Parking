@@ -4,7 +4,6 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.parking.entity.ParkingArea;
 import com.parking.external.WeatherClient.OpenMeteoResponse;
-import com.parking.service.ParkingService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
@@ -18,24 +17,21 @@ public class WeatherService {
 
     private static final Logger log = LoggerFactory.getLogger(WeatherService.class);
 
-    private final ParkingService parkingService;
     private final WeatherClient weatherClient;
     private final ObjectMapper objectMapper;
 
-    public WeatherService(ParkingService parkingService, WeatherClient weatherClient, ObjectMapper objectMapper) {
-        this.parkingService = parkingService;
+    public WeatherService(WeatherClient weatherClient, ObjectMapper objectMapper) {
         this.weatherClient = weatherClient;
         this.objectMapper = objectMapper;
     }
 
-    public AreaWeather getWeather(int areaId) {
-        ParkingArea area = parkingService.getParkingArea(areaId);
+    public AreaWeather getWeather(ParkingArea area) {
         double[] position = position(area);
         OpenMeteoResponse response;
         try {
             response = weatherClient.currentWeather(position[0], position[1]);
         } catch (RestClientException e) {
-            log.warn("Open-Meteo call failed for area {}: {}", areaId, e.getMessage());
+            log.warn("Open-Meteo call failed for area {}: {}", area.getId(), e.getMessage());
             throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE,
                     "The weather service is unavailable, try again later");
         }

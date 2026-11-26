@@ -134,8 +134,8 @@
       "name": "2. REST Spring Boot (JSON)",
       "item": [
         {
-          "name": "2.1 List parking areas",
-          "request": { "method": "GET", "url": "{{gateway}}/api/parking-areas" },
+          "name": "2.1 List my parking areas (admin)",
+          "request": { "method": "GET", "url": "{{gateway}}/api/parking-areas", "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }] },
           "event": [{ "listen": "test", "script": { "exec": [
             "pm.test('200 JSON array', () => { pm.response.to.have.status(200); pm.expect(pm.response.json()).to.be.an('array'); });"
           ] } }]
@@ -258,7 +258,7 @@
         },
         {
           "name": "6.3 /api/** goes to parking-service",
-          "request": { "method": "GET", "url": "{{gateway}}/api/parking-areas" },
+          "request": { "method": "GET", "url": "{{gateway}}/api/parking-areas", "header": [{ "key": "Authorization", "value": "Bearer {{driverToken}}" }] },
           "event": [{ "listen": "test", "script": { "exec": [
             "pm.test('X-Served-By', () => pm.expect(pm.response.headers.get('X-Served-By')).to.eql('parking-service'));"
           ] } }]
@@ -270,7 +270,7 @@
       "item": [
         {
           "name": "7.1 Weather at a parking area",
-          "request": { "method": "GET", "url": "{{gateway}}/api/parking-areas/{{areaId}}/weather" },
+          "request": { "method": "GET", "url": "{{gateway}}/api/parking-areas/{{areaId}}/weather", "header": [{ "key": "Authorization", "value": "Bearer {{driverToken}}" }] },
           "event": [{ "listen": "test", "script": { "exec": [
             "pm.test('200 from open-meteo', () => { pm.response.to.have.status(200); pm.expect(pm.response.json().source).to.eql('open-meteo.com'); });"
           ] } }]

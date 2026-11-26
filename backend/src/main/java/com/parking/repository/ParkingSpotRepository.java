@@ -7,7 +7,13 @@ import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.util.Optional;
+
 public interface ParkingSpotRepository extends JpaRepository<ParkingSpot, Integer> {
+
+    @Query("select s from ParkingSpot s where s.id = :id and s.parkingArea.id in "
+            + "(select a.id from ParkingArea a where " + ParkingAreaRepository.MANAGED_BY + ")")
+    Optional<ParkingSpot> findManagedSpot(@Param("id") int id, @Param("userId") int userId);
 
     /**
      * Changes the status in one SQL statement, only if it is still {@code from}.

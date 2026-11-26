@@ -7,6 +7,7 @@ import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 
@@ -25,9 +26,21 @@ public interface ReservationRepository extends JpaRepository<Reservation, Intege
     /** The most recent reservations, for the ticket counter. */
     List<Reservation> findTop100ByOrderByStartedAtDesc();
 
+    List<Reservation> findTop100ByAreaIdInOrderByStartedAtDesc(List<Integer> areaIds);
+
     /** Paid stays (earnings are counted on the exit date). */
-    List<Reservation> findByEndedAtGreaterThanEqual(java.time.Instant from);
+    @Query("""
+            select r from Reservation r
+            where r.endedAt >= :from
+              and r.areaId in (select a.id from ParkingArea a where
+            """ + ParkingAreaRepository.MANAGED_BY + ")")
+    List<Reservation> findEarningsByAdmin(@Param("userId") int adminId, @Param("from") Instant from);
 
     /** Entries (a reservation starts when the driver enters). */
-    List<Reservation> findByStartedAtGreaterThanEqual(java.time.Instant from);
+    @Query("""
+            select r from Reservation r
+            where r.startedAt >= :from
+              and r.areaId in (select a.id from ParkingArea a where
+            """ + ParkingAreaRepository.MANAGED_BY + ")")
+    List<Reservation> findEntriesByAdmin(@Param("userId") int adminId, @Param("from") Instant from);
 }

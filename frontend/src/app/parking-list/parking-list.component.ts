@@ -4,6 +4,7 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { ParkingService } from '../parking.service';
+import { AuthService } from '../auth.service';
 import { ParkingArea } from '../models';
 import { AdminReportsComponent } from '../admin-reports/admin-reports.component';
 import { AdminAppealsComponent } from '../admin-appeals/admin-appeals.component';
@@ -19,6 +20,7 @@ import { AdminIssuesComponent } from '../admin-issues/admin-issues.component';
 export class ParkingListComponent implements OnInit {
   private parkingService = inject(ParkingService);
   private router = inject(Router);
+  auth = inject(AuthService);
 
   areas: ParkingArea[] = [];
   newName = '';
@@ -33,5 +35,9 @@ export class ParkingListComponent implements OnInit {
       next: area => this.router.navigate(['/parking-areas', area.id]),
       error: (err: HttpErrorResponse) => (this.error = err.error?.message ?? 'Could not create the parking area'),
     });
+  }
+
+  logout() {
+    this.auth.logout().subscribe(() => this.router.navigate(['/login']));
   }
 }

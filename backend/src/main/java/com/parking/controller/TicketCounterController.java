@@ -4,6 +4,7 @@ import com.parking.dto.CounterDtos.CounterReservation;
 import com.parking.dto.CounterDtos.NonPayingReportResponse;
 import com.parking.dto.ParkingRequests.NonPayingReportRequest;
 import com.parking.service.TicketCounterService;
+import com.parking.service.StaffPermissions;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
@@ -20,18 +21,21 @@ public class TicketCounterController {
     private final TicketCounterService ticketCounterService;
 
     @GetMapping("/reservations")
-    public List<CounterReservation> reservations() {
-        return ticketCounterService.recentReservations();
+    public List<CounterReservation> reservations(Authentication authentication) {
+        return ticketCounterService.recentReservations((Integer) authentication.getPrincipal(),
+                StaffPermissions.hasRole(authentication, "LEGACY_COUNTER"));
     }
 
     @GetMapping("/non-paying-reports")
-    public List<NonPayingReportResponse> reports() {
-        return ticketCounterService.reports();
+    public List<NonPayingReportResponse> reports(Authentication authentication) {
+        return ticketCounterService.counterReports((Integer) authentication.getPrincipal(),
+                StaffPermissions.hasRole(authentication, "LEGACY_COUNTER"));
     }
 
     @PostMapping("/non-paying-reports")
     @ResponseStatus(HttpStatus.CREATED)
     public NonPayingReportResponse report(@RequestBody NonPayingReportRequest request, Authentication authentication) {
-        return ticketCounterService.report((Integer) authentication.getPrincipal(), request);
+        return ticketCounterService.report((Integer) authentication.getPrincipal(),
+                StaffPermissions.hasRole(authentication, "LEGACY_COUNTER"), request);
     }
 }

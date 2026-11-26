@@ -3,6 +3,7 @@ package com.parking.controller;
 import com.parking.dto.AuthDtos.UpdateUserRequest;
 import com.parking.dto.AuthDtos.UserResponse;
 import com.parking.service.UserService;
+import com.parking.service.StaffPermissions;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
@@ -37,8 +38,7 @@ public class UserController {
     }
 
     private void requireOwnAccountOrAdmin(int id, Authentication authentication) {
-        boolean isAdmin = authentication.getAuthorities().stream()
-                .anyMatch(authority -> authority.getAuthority().equals("ROLE_ADMIN"));
+        boolean isAdmin = StaffPermissions.hasRole(authentication, "PLATFORM_ADMIN");
         if (!isAdmin && !Integer.valueOf(id).equals(authentication.getPrincipal())) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "You can only access your own account");
         }

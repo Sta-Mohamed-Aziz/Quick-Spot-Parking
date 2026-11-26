@@ -127,20 +127,24 @@ npm start
 
 Open http://localhost:4200, create a parking area, then click "Edit layout".
 
+Use **Create an account to request access** on the staff sign-in page to request an administrator or ticket counter role for a parking area. Area admins can open **Manage staff** from the parking list to approve requests or grant access to an existing account by email. Applicants can use **Check access** to open their assigned interface after an approval.
+
 ## Run the Android app
 
 The Android emulator uses `http://10.0.2.2:8080/api/` to reach the backend on the host machine. For a physical device, set `api.url` in `android/local.properties` to the host computer's LAN address, for example `http://192.168.1.20:8080/api/`, and keep the phone and computer on the same network.
 
 ## REST API
 
-- `GET /api/parking-areas` — list parking areas.
+- `GET /api/parking-areas` — list the signed-in admin's areas or the driver's parking catalog.
 - `POST /api/parking-areas` — create an area; returns `201 Created` with a `Location` header.
 - `GET /api/parking-areas/{id}` — retrieve one area and its spots.
 - `PUT /api/parking-areas/{id}/layout` — replace an area's layout and spot collection.
 - `GET /api/parking-spots/{id}` — retrieve one spot.
 - `PATCH /api/parking-spots/{id}` — update a spot's `type`, `status`, or both. For example, send `{"status":"NOT_AVAILABLE"}` to make a spot unavailable.
 
-All endpoints return JSON. The admin endpoints require the administrator session created by `POST /api/auth/login`; the Angular app validates that session and sends the session cookie and CSRF token automatically. Reservations remain available to the Android client.
+All endpoints return JSON. The Angular app sends the session cookie and CSRF token automatically. Signed-in drivers can browse the full parking catalog. Platform admins create areas and handle site-wide moderation. Area admins can edit layouts, manage staff and use the ticket counter for their assigned areas. Assigned ticket counters can use the counter for their assigned areas.
+
+New areas are assigned to the admin who creates them. Admins can access areas they own or have administrator access to. Existing areas with a null `parking_area.admin_id` stay in the driver catalog. Set `admin_id` to the owning admin's `users.id` in PostgreSQL to show those areas in that admin's dashboard.
 
 ## Editor
 

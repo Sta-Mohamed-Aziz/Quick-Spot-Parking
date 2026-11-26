@@ -77,7 +77,7 @@ public class UserService {
         userRepository.save(new User(counterName, counterEmail, passwordEncoderService.encode(counterPassword), Role.TICKET_COUNTER));
         log.info("Default ticket counter created: email={}", counterEmail);
     }
-    public UserResponse login(loginRequest request){
+    public User login(loginRequest request){
         if(request == null || request .email() == null || request.password() == null){
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED , "Email and password are required"); 
         }
@@ -92,14 +92,17 @@ public class UserService {
             // The app shows the ban reason and lets the user appeal.
             throw new AccountBannedException(banService.banInfo(user));
         }
-        return UserResponse.from(user);
+        return user;
     }
     @Transactional 
-    public UserResponse register(registerRequest request){
+    public User register(registerRequest request, Role role){
         if(request == null || request.name()==null || request.name().isBlank() || request.email() == null || request.email().isBlank() || request.password() == null || request.password().isBlank()){
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST , "Name , email , and password are required");
         }
         String email = request.email().trim().toLowerCase(Locale.ROOT);
+        if (request.name().trim().length() > 100 || email.length() > 255) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "The name or email is too long");
+        }
         if(userRepository.existsByEmailIgnoreCase(email)){
             throw new ResponseStatusException(HttpStatus.CONFLICT , "Email is already registred");
         }
@@ -107,10 +110,9 @@ public class UserService {
             request.name().trim(),
             email,
             passwordEncoderService.encode(request.password()),
-            Role.USER
+            role
         );
-        userRepository.save(user);
-        return UserResponse.from(user);
+        return userRepository.save(user);
     }
     @Transactional
     public UserResponse updateUser(int id , UpdateUserRequest request){
@@ -141,9 +143,12 @@ public class UserService {
         return UserResponse.from(user);
     }
     public UserResponse getUser(int id){
-        User user = userRepository.findById(id)
+        return UserResponse.from(getAccount(id));
+    }
+
+    public User getAccount(int id) {
+        return userRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
-        return UserResponse.from(user);
     }
     public List<UserResponse> getAllUsers(){
         return userRepository.findAll().stream()

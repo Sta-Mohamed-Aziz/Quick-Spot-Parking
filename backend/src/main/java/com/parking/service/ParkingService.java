@@ -9,8 +9,11 @@ import com.parking.entity.SpotStatus;
 import com.parking.entity.SpotType;
 import com.parking.repository.ParkingAreaRepository;
 import com.parking.repository.ParkingSpotRepository;
+import com.parking.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
@@ -20,24 +23,29 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
 public class ParkingService {
 
+    private static final SimpleGrantedAuthority ADMIN_AUTHORITY = new SimpleGrantedAuthority("ROLE_ADMIN");
+
     private final ParkingAreaRepository parkingAreaRepository;
     private final ParkingSpotRepository parkingSpotRepository;
+    private final UserRepository userRepository;
 
-    public List<ParkingArea> getParkingAreas() {
-        return parkingAreaRepository.findAll();
+    public List<ParkingArea> getParkingAreas(Authentication caller) {
+        Integer adminId = adminId(caller);
+        return adminId == null ? parkingAreaRepository.findAll() : parkingAreaRepository.findManagedAreas(adminId);
     }
 
-    public ParkingArea getParkingArea(int id) {
-        return parkingAreaRepository.findById(id)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Parking area not found"));
+    public ParkingArea getParkingArea(int id, Authentication caller) {
+        return findArea(id, adminId(caller));
     }
 
-    public ParkingArea createParkingArea(String name) {
+    @Transactional
+    public ParkingArea createParkingArea(String name, int adminId) {
         if (name == null || name.isBlank()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "The name is required");
         }
@@ -46,20 +54,21 @@ public class ParkingService {
         }
         ParkingArea area = new ParkingArea();
         area.setName(name.trim());
+        area.setAdmin(userRepository.getReferenceById(adminId));
         return parkingAreaRepository.save(area);
     }
 
-    public ParkingSpot getParkingSpot(int id) {
-        return getSpot(id);
+    public ParkingSpot getParkingSpot(int id, Authentication caller) {
+        return findSpot(id, adminId(caller));
     }
 
     @Transactional
-    public ParkingArea updateLayout(int areaId, LayoutRequest request) {
+    public ParkingArea updateLayout(int areaId, int adminId, LayoutRequest request) {
         if (request == null || request.layout() == null || request.spots() == null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Layout and spots are required");
         }
 
-        ParkingArea area = getParkingArea(areaId);
+        ParkingArea area = findArea(areaId, adminId);
         Map<String, SpotType> requestedSpots = new HashMap<>();
         List<SpotPrice> spotPricing = new ArrayList<>();
         for (LayoutRequest.Spot spot : request.spots()) {
@@ -100,12 +109,12 @@ public class ParkingService {
     }
 
     @Transactional
-    public ParkingSpot updateParkingSpot(int spotId, SpotUpdateRequest request) {
+    public ParkingSpot updateParkingSpot(int spotId, int adminId, SpotUpdateRequest request) {
         if (request == null || request.type() == null && request.status() == null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "At least one spot field must be provided");
         }
 
-        ParkingSpot spot = getSpot(spotId);
+        ParkingSpot spot = findSpot(spotId, adminId);
         if (request.type() != null) {
             spot.updateType(request.type());
         }
@@ -118,9 +127,22 @@ public class ParkingService {
         return spot;
     }
 
-    private ParkingSpot getSpot(int id) {
-        return parkingSpotRepository.findById(id)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Parking spot not found"));
+    private ParkingArea findArea(int id, Integer adminId) {
+        Optional<ParkingArea> area = adminId == null
+                ? parkingAreaRepository.findById(id)
+                : parkingAreaRepository.findManagedArea(id, adminId);
+        return area.orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Parking area not found"));
+    }
+
+    private ParkingSpot findSpot(int id, Integer adminId) {
+        Optional<ParkingSpot> spot = adminId == null
+                ? parkingSpotRepository.findById(id)
+                : parkingSpotRepository.findManagedSpot(id, adminId);
+        return spot.orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Parking spot not found"));
+    }
+
+    private static Integer adminId(Authentication caller) {
+        return caller.getAuthorities().contains(ADMIN_AUTHORITY) ? (Integer) caller.getPrincipal() : null;
     }
 
     private void checkNotInUse(ParkingSpot spot) {

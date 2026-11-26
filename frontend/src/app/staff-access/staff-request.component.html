@@ -1,0 +1,50 @@
+<main class="page access-page">
+  <header class="access-heading">
+    <h1>Request parking access</h1>
+    <button type="button" class="secondary" (click)="logout()" [disabled]="busy">Log out</button>
+  </header>
+
+  <form class="access-form" (ngSubmit)="submit()">
+    <label>Parking area
+      <select name="area" [(ngModel)]="areaId" required [disabled]="busy">
+        <option [ngValue]="null">Choose a parking area</option>
+        @for (area of areas; track area.id) {
+          <option [ngValue]="area.id">{{ area.name }}</option>
+        }
+      </select>
+    </label>
+    <label>Role
+      <select name="role" [(ngModel)]="role" [disabled]="busy">
+        <option value="TICKET_COUNTER">Ticket counter</option>
+        <option value="ADMIN">Administrator</option>
+      </select>
+    </label>
+    <button type="submit" [disabled]="areaId === null || busy">Send request</button>
+  </form>
+
+  @if (error) { <p class="error" role="alert">{{ error }}</p> }
+  @if (message) { <p class="message" role="status">{{ message }}</p> }
+
+  <section>
+    <div class="access-heading">
+      <h2>Your requests</h2>
+      <button type="button" class="secondary" (click)="refresh()" [disabled]="busy">Check access</button>
+    </div>
+    @if (requests.length) {
+      <table>
+        <thead><tr><th>Parking area</th><th>Role</th><th>Status</th></tr></thead>
+        <tbody>
+          @for (request of requests; track request.id) {
+            <tr>
+              <td>{{ request.areaName }}</td>
+              <td>{{ roleName[(request.requestedRole ?? request.grantedRole)!] }}</td>
+              <td>{{ request.requestedRole ? 'Pending approval' : 'Approved' }}</td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    } @else if (!busy) {
+      <p class="hint">You have no access requests yet.</p>
+    }
+  </section>
+</main>

@@ -8,6 +8,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.web.access.expression.WebExpressionAuthorizationManager;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.HttpStatusEntryPoint;
@@ -40,7 +41,7 @@ public class SecurityConfig {
                         // ban-status and appeal check the email and password themselves, like login.
                         .ignoringRequestMatchers(new AndRequestMatcher(new AntPathRequestMatcher("/api/reservations/**"),
                                 new NegatedRequestMatcher(issueSubmission)))
-                        .ignoringRequestMatchers("/api/auth/register", "/api/auth/login",
+                        .ignoringRequestMatchers("/api/auth/register", "/api/auth/staff-register", "/api/auth/login",
                                 "/api/auth/ban-status", "/api/auth/appeal")
                         // A Bearer token is not sent automatically by the browser, so CSRF does not apply.
                         .ignoringRequestMatchers(request -> {
@@ -53,26 +54,28 @@ public class SecurityConfig {
                         .requestMatchers("/error").permitAll()
                         // Prometheus scrapes the metrics; other actuator endpoints (refresh...) are for admins.
                         .requestMatchers("/actuator/health/**", "/actuator/info", "/actuator/prometheus").permitAll()
-                        .requestMatchers("/actuator/**").hasRole("ADMIN")
+                        .requestMatchers("/actuator/**").hasRole("PLATFORM_ADMIN")
                         // Prices read from the config server.
                         .requestMatchers(HttpMethod.GET, "/api/pricing").permitAll()
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/auth/csrf").permitAll()
-                        .requestMatchers(HttpMethod.POST, "/api/auth/login", "/api/auth/register", "/api/auth/logout",
+                        .requestMatchers(HttpMethod.POST, "/api/auth/login", "/api/auth/register", "/api/auth/staff-register", "/api/auth/logout",
                                 "/api/auth/ban-status", "/api/auth/appeal").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/auth/me").authenticated()
-                        .requestMatchers(HttpMethod.GET, "/api/parking-areas/**", "/api/parking-spots/**").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/users").hasRole("ADMIN")
-                        .requestMatchers(HttpMethod.GET, "/api/users/*").authenticated()
-                        .requestMatchers(HttpMethod.PUT, "/api/users/*").authenticated()
+                        .requestMatchers("/api/staff-access/**").hasRole("EMPLOYEE")
+                        .requestMatchers(HttpMethod.GET, "/api/parking-areas/**", "/api/parking-spots/**").hasAnyRole("USER", "ADMIN")
+                        .requestMatchers(HttpMethod.HEAD, "/api/parking-areas/**", "/api/parking-spots/**").hasAnyRole("USER", "ADMIN")
+                        .requestMatchers(HttpMethod.GET, "/api/users").hasRole("PLATFORM_ADMIN")
+                        .requestMatchers("/api/users/*").hasAnyRole("USER", "ADMIN", "TICKET_COUNTER")
                         // SCRUM-88: the ticket counter reports non paying users.
                         .requestMatchers("/api/counter/**").hasAnyRole("TICKET_COUNTER", "ADMIN")
-                        // The admin bans reported users or dismisses the reports.
-                        .requestMatchers("/api/admin/**").hasRole("ADMIN")
-                        .requestMatchers("/api/parking-areas/**", "/api/parking-spots/**", "/api/issues")
-                        .hasRole("ADMIN")
-                        .requestMatchers(issueSubmission).authenticated()
-                        .requestMatchers("/api/reservations/**").permitAll()
+                        .requestMatchers("/api/admin/areas/**", "/api/admin/stats/**").hasRole("ADMIN")
+                        .requestMatchers("/api/admin/**", "/api/issues").hasRole("PLATFORM_ADMIN")
+                        .requestMatchers(HttpMethod.POST, "/api/parking-areas").hasRole("PLATFORM_ADMIN")
+                        .requestMatchers("/api/parking-areas/**", "/api/parking-spots/**").hasRole("ADMIN")
+                        .requestMatchers(issueSubmission).hasAnyRole("USER", "PLATFORM_ADMIN")
+                        .requestMatchers("/api/reservations/**").access(new WebExpressionAuthorizationManager(
+                                "isAnonymous() or hasAnyRole('USER', 'PLATFORM_ADMIN')"))
                         .anyRequest().denyAll())
                 // No/expired session -> 401 so clients know to log in again; 403 stays for real permission errors.
                 .exceptionHandling(ex -> ex.authenticationEntryPoint(new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED)))

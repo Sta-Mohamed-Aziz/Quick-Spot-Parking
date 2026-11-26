@@ -7,6 +7,8 @@ import com.parking.external.WeatherService;
 import com.parking.service.ParkingService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
@@ -22,24 +24,25 @@ public class ParkingAreaController {
     private final WeatherService weatherService;
 
     @GetMapping
-    public List<ParkingArea> getParkingAreas() {
-        return parkingService.getParkingAreas();
+    public List<ParkingArea> getParkingAreas(Authentication caller) {
+        return parkingService.getParkingAreas(caller);
     }
 
     @GetMapping("/{id}")
-    public ParkingArea getParkingArea(@PathVariable int id) {
-        return parkingService.getParkingArea(id);
+    public ParkingArea getParkingArea(@PathVariable int id, Authentication caller) {
+        return parkingService.getParkingArea(id, caller);
     }
 
     /** Current weather at the area, from the external Open-Meteo service. */
     @GetMapping("/{id}/weather")
-    public WeatherService.AreaWeather getWeather(@PathVariable int id) {
-        return weatherService.getWeather(id);
+    public WeatherService.AreaWeather getWeather(@PathVariable int id, Authentication caller) {
+        return weatherService.getWeather(parkingService.getParkingArea(id, caller));
     }
 
     @PostMapping
-    public ResponseEntity<ParkingArea> createParkingArea(@RequestBody CreateParkingAreaRequest request) {
-        ParkingArea area = parkingService.createParkingArea(request.name());
+    public ResponseEntity<ParkingArea> createParkingArea(@RequestBody CreateParkingAreaRequest request,
+                                                         @AuthenticationPrincipal Integer adminId) {
+        ParkingArea area = parkingService.createParkingArea(request.name(), adminId);
         URI location = ServletUriComponentsBuilder.fromCurrentRequest()
                 .path("/{id}")
                 .buildAndExpand(area.getId())
@@ -48,7 +51,8 @@ public class ParkingAreaController {
     }
 
     @PutMapping("/{id}/layout")
-    public ParkingArea updateLayout(@PathVariable int id, @RequestBody LayoutRequest request) {
-        return parkingService.updateLayout(id, request);
+    public ParkingArea updateLayout(@PathVariable int id, @RequestBody LayoutRequest request,
+                                    @AuthenticationPrincipal Integer adminId) {
+        return parkingService.updateLayout(id, adminId, request);
     }
 }

@@ -3,10 +3,16 @@
     <div class="login-logo">
       <span class="logo-icon">🅿</span>
     </div>
-    <h1>Staff Login</h1>
-    <p class="subtitle">Parking Management System</p>
+    <h1>{{ registering ? 'Create a staff account' : 'Staff sign in' }}</h1>
+    <p class="subtitle">{{ registering ? 'Request access to a parking area after signing up.' : 'Parking Management System' }}</p>
 
     <form (ngSubmit)="submit()">
+      @if (registering) {
+        <div class="field">
+          <label for="name">Name</label>
+          <input id="name" name="name" [(ngModel)]="name" autocomplete="name" maxlength="100" [disabled]="loading" />
+        </div>
+      }
       <div class="field">
         <label for="email">Email</label>
         <input
@@ -14,8 +20,8 @@
           type="email"
           name="email"
           [(ngModel)]="email"
-          placeholder="admin@parking.com"
           autocomplete="username"
+          maxlength="255"
           [disabled]="loading"
         />
       </div>
@@ -28,7 +34,7 @@
           name="password"
           [(ngModel)]="password"
           placeholder="Password"
-          autocomplete="current-password"
+          [autocomplete]="registering ? 'new-password' : 'current-password'"
           [disabled]="loading"
         />
       </div>
@@ -38,10 +44,12 @@
       }
 
       <button type="submit" [disabled]="loading" class="login-btn">
-        @if (loading) { Signing in… } @else { Sign in }
+        {{ loading ? 'Please wait…' : registering ? 'Create account' : 'Sign in' }}
       </button>
     </form>
 
-    <p class="note">Administrator and ticket counter accounts can sign in.</p>
+    <button type="button" class="mode-btn" (click)="toggleRegistration()" [disabled]="loading">
+      {{ registering ? 'Back to sign in' : 'Create an account to request access' }}
+    </button>
   </div>
 </div>

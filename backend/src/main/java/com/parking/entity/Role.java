@@ -4,5 +4,5 @@ public enum Role {
     USER,
     ADMIN,
     TICKET_COUNTER,
-    EMPLOYEE
+    EMPLOYEE // Request-only account registered from the staff sign-in page.
 }

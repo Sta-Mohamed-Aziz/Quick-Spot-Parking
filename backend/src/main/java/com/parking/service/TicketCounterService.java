@@ -6,9 +6,9 @@ import com.parking.dto.ParkingRequests.NonPayingReportRequest;
 import com.parking.entity.NonPayingReport;
 import com.parking.entity.ReportStatus;
 import com.parking.entity.Reservation;
-import com.parking.entity.Role;
 import com.parking.entity.User;
 import com.parking.repository.NonPayingReportRepository;
+import com.parking.repository.ParkingAreaRepository;
 import com.parking.repository.ReservationRepository;
 import com.parking.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -33,12 +33,18 @@ public class TicketCounterService {
 
     private final ReservationRepository reservationRepository;
     private final NonPayingReportRepository reportRepository;
+    private final ParkingAreaRepository parkingAreaRepository;
     private final UserRepository userRepository;
     private final BanService banService;
+    private final StaffPermissions staffPermissions;
 
     /** Recent reservations, newest first, with the driver's name and email. */
-    public List<CounterReservation> recentReservations() {
-        List<Reservation> reservations = reservationRepository.findTop100ByOrderByStartedAtDesc();
+    public List<CounterReservation> recentReservations(int callerId, boolean legacyCounter) {
+        List<Reservation> reservations = legacyCounter ? reservationRepository.findTop100ByOrderByStartedAtDesc()
+                : reservationRepository.findTop100ByAreaIdInOrderByStartedAtDesc(parkingAreaRepository.findCounterAreaIds(callerId));
+        if (reservations.isEmpty()) {
+            return List.of();
+        }
         Map<Integer, User> users = usersById(reservations.stream().map(r -> parseUserId(r.getUserId())));
         Set<Integer> reported = reportRepository
                 .findByReservationIdIn(reservations.stream().map(Reservation::getId).toList())
@@ -54,7 +60,7 @@ public class TicketCounterService {
     }
 
     @Transactional
-    public NonPayingReportResponse report(int ticketCounterId, NonPayingReportRequest request) {
+    public NonPayingReportResponse report(int ticketCounterId, boolean legacyCounter, NonPayingReportRequest request) {
         if (request == null || request.reservationId() == null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "The reservation is required");
         }
@@ -64,6 +70,10 @@ public class TicketCounterService {
         }
         Reservation reservation = reservationRepository.findById(request.reservationId())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Reservation not found"));
+        if (!legacyCounter && (reservation.getAreaId() == null
+                || !parkingAreaRepository.findCounterAreaIds(ticketCounterId).contains(reservation.getAreaId()))) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Reservation not found");
+        }
         Integer userId = parseUserId(reservation.getUserId());
         User user = userId == null ? null : userRepository.findById(userId).orElse(null);
         if (user == null) {
@@ -85,6 +95,14 @@ public class TicketCounterService {
         return toResponses(reportRepository.findAllByOrderByReportedAtDesc());
     }
 
+    public List<NonPayingReportResponse> counterReports(int callerId, boolean legacyCounter) {
+        if (legacyCounter) {
+            return reports();
+        }
+        List<Integer> areaIds = parkingAreaRepository.findCounterAreaIds(callerId);
+        return areaIds.isEmpty() ? List.of() : toResponses(reportRepository.findAreaReports(areaIds));
+    }
+
     /**
      * Admin decision: bans (blocks) the reported user. The user can no longer log in or reserve.
      * Every other pending report about the same user is closed as BANNED too.
@@ -95,7 +113,7 @@ public class TicketCounterService {
         NonPayingReport report = getReport(reportId);
         User user = userRepository.findById(report.getUserId())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "The reported user no longer exists"));
-        if (user.getRole() == Role.ADMIN) {
+        if (staffPermissions.isAdmin(user)) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "An administrator account cannot be banned");
         }
         user.ban(banReason);
