@@ -37,6 +37,7 @@ public class TicketCounterService {
     private final UserRepository userRepository;
     private final BanService banService;
     private final StaffPermissions staffPermissions;
+    private final ReservationService reservationService;
 
     /** Recent reservations, newest first, with the driver's name and email. */
     public List<CounterReservation> recentReservations(int callerId, boolean legacyCounter) {
@@ -105,7 +106,8 @@ public class TicketCounterService {
 
     /**
      * Admin decision: bans (blocks) the reported user. The user can no longer log in or reserve.
-     * Every other pending report about the same user is closed as BANNED too.
+     * Every other pending report about the same user is closed as BANNED too, and the user's
+     * current reservation is ended so the spot is freed for other drivers.
      */
     @Transactional
     public List<NonPayingReportResponse> ban(int reportId, String reason, int adminId) {
@@ -118,6 +120,10 @@ public class TicketCounterService {
         }
         user.ban(banReason);
         userRepository.save(user);
+        // Same as the driver leaving: the stay is closed with its receipt, the spot becomes AVAILABLE
+        // and RESERVATION_ENDED is published.
+        reservationRepository.findByUserIdAndEndedAtIsNull(String.valueOf(user.getId()))
+                .forEach(r -> reservationService.exit(r.getId()));
         List<NonPayingReport> closed = reportRepository.findByUserId(user.getId()).stream()
                 .filter(r -> r.getId().equals(reportId) || r.getStatus() == ReportStatus.PENDING)
                 .peek(r -> r.resolve(ReportStatus.BANNED, adminId))
