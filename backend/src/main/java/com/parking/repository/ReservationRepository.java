@@ -21,6 +21,9 @@ public interface ReservationRepository extends JpaRepository<Reservation, Intege
 
     boolean existsBySpotIdAndEndedAtIsNull(Integer spotId);
 
+    /** The user's open stays (normally at most one), ended when the user is banned. */
+    List<Reservation> findByUserIdAndEndedAtIsNull(String userId);
+
     List<Reservation> findByUserIdOrderByStartedAtDesc(String userId);
 
     /** The most recent reservations, for the ticket counter. */
