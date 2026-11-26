@@ -9,6 +9,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
@@ -23,8 +24,9 @@ public class ReservationController {
     private final ReservationService reservationService;
 
     @PostMapping("/reservations")
-    public ResponseEntity<Reservation> reserve(@RequestBody ReservationRequest request) {
-        Reservation reservation = reservationService.reserve(request);
+    public ResponseEntity<Reservation> reserve(@RequestBody ReservationRequest request,
+                                               @AuthenticationPrincipal Integer accountId) {
+        Reservation reservation = reservationService.reserve(request, accountId);
         URI location = ServletUriComponentsBuilder.fromCurrentRequest()
                 .path("/{id}")
                 .buildAndExpand(reservation.getId())

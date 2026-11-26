@@ -17,6 +17,7 @@ export interface CounterReservation {
   currency: string;
   active: boolean;
   reported: boolean;
+  paymentExempt: boolean;
 }
 
 export interface NonPayingReport {

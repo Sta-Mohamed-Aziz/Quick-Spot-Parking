@@ -13,8 +13,9 @@
         </label>
         <label>Role
           <select name="role" [(ngModel)]="role" [disabled]="busy">
-            <option value="TICKET_COUNTER">Ticket counter</option>
+            <option value="TICKET_COUNTER">TICKET_COUNTER</option>
             <option value="ADMIN">Administrator</option>
+            <option value="PERSONNEL">Personnel</option>
           </select>
         </label>
         <button type="submit" [disabled]="busy || !grantForm.valid">Grant access</button>
@@ -50,7 +51,13 @@
             @for (entry of staff; track entry.id) {
               <tr>
                 <td><strong>{{ entry.name }}</strong><br><span class="hint">{{ entry.email }}</span></td>
-                <td>{{ roleName[entry.grantedRole!] }}</td>
+                <td>
+                  @if (entry.grantedRole; as role) {
+                    {{ roleName[role] }}
+                    @if (entry.personnel) { · }
+                  }
+                  @if (entry.personnel) { Personnel }
+                </td>
               </tr>
             }
           </tbody>

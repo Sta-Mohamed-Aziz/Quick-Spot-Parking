@@ -44,21 +44,24 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import com.parking.app.BookingRates
 import com.parking.app.ItemKind
 import com.parking.app.ParkingSpot
 import com.parking.app.ParkingViewModel
 import com.parking.app.SpotStatus
+import com.parking.app.SpotType
 import com.parking.app.floorName
+import com.parking.app.formatMoney
 import com.parking.app.ui.theme.ParkingTheme
 import kotlinx.coroutines.delay
 
 /** SCRUM-69: see the plan of the area and reserve a free spot. */
 @Composable
 fun PlanScreen(vm: ParkingViewModel, areaId: Int, onBack: () -> Unit, onReserved: () -> Unit) {
-    // Reload every 15 seconds so spots taken by other users turn grey.
+    // Refresh availability and rates together while the plan is open.
     LaunchedEffect(areaId) {
         while (true) {
-            vm.openArea(areaId)
+            vm.openArea(areaId).join()
             delay(15_000)
         }
     }
@@ -137,6 +140,7 @@ fun PlanScreen(vm: ParkingViewModel, areaId: Int, onBack: () -> Unit, onReserved
             PlanLegend("Selected", Modifier.padding(horizontal = 16.dp, vertical = 12.dp))
             SpotPanel(
                 spot = selected?.let { spots[it] },
+                bookingRates = info.area.bookingRates,
                 hasReservation = vm.reservation != null,
                 working = vm.working,
                 onReserve = { spot -> vm.reserve(spot, onReserved) },
@@ -161,7 +165,13 @@ private fun FloorChip(label: String, selected: Boolean, onClick: () -> Unit) {
 }
 
 @Composable
-private fun SpotPanel(spot: ParkingSpot?, hasReservation: Boolean, working: Boolean, onReserve: (ParkingSpot) -> Unit) {
+private fun SpotPanel(
+    spot: ParkingSpot?,
+    bookingRates: BookingRates?,
+    hasReservation: Boolean,
+    working: Boolean,
+    onReserve: (ParkingSpot) -> Unit,
+) {
     val brand = ParkingTheme.brand
     Surface(
         shape = RoundedCornerShape(topStart = 32.dp, topEnd = 32.dp),
@@ -189,6 +199,8 @@ private fun SpotPanel(spot: ParkingSpot?, hasReservation: Boolean, working: Bool
                     return@AnimatedContent
                 }
                 val available = current.status == SpotStatus.AVAILABLE
+                val rate = bookingRates?.hourlyRates?.get(current.id)
+                val personnelOnly = current.type == SpotType.PERSONNEL && bookingRates != null && rate == null
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     IconTile(glyph = current.number.take(4), tint = Color.White, container = spotColor(current.type), size = 60.dp)
                     Column(Modifier.padding(start = 16.dp)) {
@@ -200,6 +212,13 @@ private fun SpotPanel(spot: ParkingSpot?, hasReservation: Boolean, working: Bool
                         }
                     }
                 }
+                val rateLabel = when {
+                    personnelOnly -> "Reserved for this area's personnel"
+                    bookingRates == null || rate == null -> "Hourly rate unavailable"
+                    rate == 0.0 -> "No parking fee"
+                    else -> "${formatMoney(rate, bookingRates.currency)} / hour"
+                }
+                Text(rateLabel, Modifier.padding(top = 12.dp), style = MaterialTheme.typography.titleMedium)
                 if (hasReservation) {
                     Row(
                         Modifier
@@ -227,7 +246,7 @@ private fun SpotPanel(spot: ParkingSpot?, hasReservation: Boolean, working: Bool
                 GradientButton(
                     "Reserve this spot",
                     onClick = { onReserve(current) },
-                    enabled = available && !hasReservation && !working,
+                    enabled = available && !personnelOnly && !hasReservation && !working,
                     loading = working,
                     icon = Icons.Default.CheckCircle,
                     modifier = Modifier.fillMaxWidth().padding(top = 16.dp),

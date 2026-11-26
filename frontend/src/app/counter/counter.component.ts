@@ -79,7 +79,7 @@ export class CounterComponent implements OnInit {
   }
 
   canReport(r: CounterReservation) {
-    return r.userId !== null && r.userName !== null && !r.reported;
+    return r.userId !== null && r.userName !== null && !r.reported && !r.paymentExempt;
   }
 
   initials(name: string | null) {

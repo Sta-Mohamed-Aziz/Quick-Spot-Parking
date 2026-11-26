@@ -4,5 +4,6 @@ public enum Role {
     USER,
     ADMIN,
     TICKET_COUNTER,
-    EMPLOYEE // Request-only account registered from the staff sign-in page.
+    EMPLOYEE, // Request-only account registered from the staff sign-in page.
+    PERSONNEL // Granted through the parking area's staff record.
 }

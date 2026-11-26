@@ -31,6 +31,10 @@ public class StaffAccess {
     @Enumerated(EnumType.STRING)
     private Role grantedRole;
 
+    @Setter
+    @Column(nullable = false, columnDefinition = "boolean default false")
+    private boolean personnel;
+
     public StaffAccess(ParkingArea area, User user) {
         this.area = area;
         this.user = user;

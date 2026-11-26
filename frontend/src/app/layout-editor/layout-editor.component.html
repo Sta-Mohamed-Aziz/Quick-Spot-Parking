@@ -139,13 +139,17 @@
               }
             </select>
           </label>
-          <label>
-            Price per hour{{ defaultPricing ? ' (' + defaultPricing.currency + ')' : '' }}
-            <input type="number" min="0" step="0.001" [value]="selected.price ?? ''"
-                   [placeholder]="defaultPricing ? 'Default: ' + defaultPricing.pricePerHour : 'Default price'"
-                   (change)="changePrice($any($event.target).value)" />
-          </label>
-          <p class="hint">Leave empty to use the default price. Saved with the layout.</p>
+          @if (selected.type === 'PERSONNEL') {
+            <p class="hint">Free for personnel assigned to this area.</p>
+          } @else {
+            <label>
+              Spot price per hour{{ defaultPricing ? ' (' + defaultPricing.currency + ')' : '' }}
+              <input type="number" min="0" step="0.001" [value]="selected.price ?? ''"
+                     [placeholder]="spotDefaultRate(selected.type)?.toString() ?? 'Default rate'"
+                     (change)="changePrice($any($event.target).value)" />
+            </label>
+            <p class="hint">Leave blank to use the hourly rate for this spot type.</p>
+          }
           <p>Status: {{ statusOf(selected) ?? 'NEW (not saved)' }}</p>
         }
 
@@ -209,6 +213,24 @@
           Red borders mean a spot overlaps another item.
         </p>
         <p class="hint">Shortcuts: Delete, Ctrl+Z, Ctrl+Y, Ctrl+D, Ctrl+S.</p>
+      }
+
+      @if (area) {
+        <h3>Hourly rates{{ defaultPricing ? ' (' + defaultPricing.currency + ')' : '' }}</h3>
+        <form #rateForm="ngForm" (ngSubmit)="saveRates()">
+          @for (rate of rateFields; track rate.key) {
+            <label>
+              {{ rate.label }}
+              <input type="number" min="0" max="9999999.999" step="0.001"
+                     [name]="rate.key" [(ngModel)]="rateDraft[rate.key]" [disabled]="savingRates"
+                     [placeholder]="defaultPricing?.pricePerHour?.toString() ?? 'Default rate'" />
+            </label>
+          }
+          <p class="hint">Blank rates use the system default. Individual spot prices take precedence.</p>
+          <button type="submit" class="wide" [disabled]="savingRates || rateForm.invalid">Save rates</button>
+          @if (rateMessage) { <p role="status">{{ rateMessage }}</p> }
+          @if (rateError) { <p class="error" role="alert">{{ rateError }}</p> }
+        </form>
       }
     </aside>
   </div>

@@ -115,7 +115,7 @@ public class UserService {
         return userRepository.save(user);
     }
     @Transactional
-    public UserResponse updateUser(int id , UpdateUserRequest request){
+    public User updateUser(int id , UpdateUserRequest request){
         if (request == null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "At least one user field must be provided");
         }
@@ -139,11 +139,7 @@ public class UserService {
         if(request.isEvOwner() != null){
             user.setEvOwner(request.isEvOwner());
         }
-        userRepository.save(user);
-        return UserResponse.from(user);
-    }
-    public UserResponse getUser(int id){
-        return UserResponse.from(getAccount(id));
+        return userRepository.save(user);
     }
 
     public User getAccount(int id) {

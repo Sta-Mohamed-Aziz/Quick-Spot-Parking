@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
+import org.hibernate.annotations.DynamicUpdate;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
@@ -13,6 +14,7 @@ import java.util.List;
 import java.util.Optional;
 
 @Entity
+@DynamicUpdate
 @Getter
 @Setter
 @Table(name="parking_area" , schema= "public")
@@ -40,6 +42,10 @@ public class ParkingArea {
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "spot_pricing", columnDefinition = "jsonb")
     private List<SpotPrice> spotPricing = new ArrayList<>();
+
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "spot_type_rates", columnDefinition = "jsonb")
+    private SpotTypeRates spotTypeRates;
 
     @OneToMany(mappedBy = "parkingArea", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<ParkingSpot> spots = new ArrayList<>();
@@ -71,5 +77,12 @@ public class ParkingArea {
                 .filter(price -> price.spotNumber().equals(spotNumber) && price.pricePerHour() != null)
                 .map(SpotPrice::pricePerHour)
                 .findFirst();
+    }
+
+    public BigDecimal hourlyRate(ParkingSpot spot, BigDecimal defaultRate) {
+        return findSpotPrice(spot.getNumber())
+                .or(() -> Optional.ofNullable(spotTypeRates == null || spot.getType() == null
+                        ? null : spotTypeRates.rateFor(spot.getType())))
+                .orElse(defaultRate);
     }
 }

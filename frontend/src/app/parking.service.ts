@@ -1,6 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { LayoutRequest, ParkingArea, ParkingSpot, Pricing, SpotUpdateRequest } from './models';
+import { LayoutRequest, ParkingArea, ParkingSpot, Pricing, SpotTypeRates, SpotUpdateRequest } from './models';
 
 @Injectable({ providedIn: 'root' })
 export class ParkingService {
@@ -21,6 +21,10 @@ export class ParkingService {
 
   updateLayout(areaId: number, request: LayoutRequest) {
     return this.http.put<ParkingArea>(`${this.api}/parking-areas/${areaId}/layout`, request);
+  }
+
+  updateRates(areaId: number, rates: SpotTypeRates) {
+    return this.http.put<SpotTypeRates>(`${this.api}/parking-areas/${areaId}/rates`, rates);
   }
 
   updateParkingSpot(spotId: number, changes: SpotUpdateRequest) {

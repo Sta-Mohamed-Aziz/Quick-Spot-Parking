@@ -11,6 +11,10 @@ import java.util.Optional;
 public interface StaffAccessRepository extends JpaRepository<StaffAccess, Integer> {
     boolean existsByUser_IdAndGrantedRole(int userId, Role role);
 
+    boolean existsByUser_IdAndPersonnelTrue(int userId);
+
+    boolean existsByArea_IdAndUser_IdAndPersonnelTrue(int areaId, int userId);
+
     @EntityGraph(attributePaths = {"area", "user"})
     List<StaffAccess> findByArea_IdOrderByIdDesc(int areaId);
 

@@ -27,4 +27,4 @@ export const authGuard: CanActivateFn = roleGuard(['ADMIN']);
 /** SCRUM-88: the ticket counter page (admins may use it too). */
 export const counterGuard: CanActivateFn = roleGuard(['TICKET_COUNTER', 'ADMIN']);
 
-export const staffRequestGuard: CanActivateFn = roleGuard(['EMPLOYEE']);
+export const staffRequestGuard: CanActivateFn = roleGuard(['EMPLOYEE', 'PERSONNEL']);

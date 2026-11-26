@@ -20,6 +20,13 @@ export interface ParkingArea {
   occupancyRate: number;
   spots: ParkingSpot[];
   spotPricing: SpotPrice[] | null;
+  spotTypeRates?: SpotTypeRates | null;
+}
+
+export interface SpotTypeRates {
+  regular: number | null;
+  ev: number | null;
+  handicapped: number | null;
 }
 
 /** Hourly price the admin set for one spot. Spots without one use the default price. */

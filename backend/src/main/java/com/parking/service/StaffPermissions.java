@@ -20,9 +20,13 @@ public class StaffPermissions {
 
     public UsernamePasswordAuthenticationToken authenticate(User user, Object credentials, Role baseRole) {
         Role role = effectiveRole(user.getId(), baseRole);
+        boolean personnel = staffAccess.existsByUser_IdAndPersonnelTrue(user.getId());
         List<SimpleGrantedAuthority> authorities = new ArrayList<>();
-        if (role != null) {
+        if (role != null && (!personnel || role == Role.ADMIN || role == Role.TICKET_COUNTER)) {
             authorities.add(new SimpleGrantedAuthority("ROLE_" + role));
+        }
+        if (personnel) {
+            authorities.add(new SimpleGrantedAuthority("ROLE_PERSONNEL"));
         }
         if (baseRole == Role.ADMIN) {
             authorities.add(new SimpleGrantedAuthority("ROLE_PLATFORM_ADMIN"));
@@ -34,7 +38,7 @@ public class StaffPermissions {
     }
 
     public UserResponse response(User user, Authentication authentication) {
-        Role role = List.of(Role.ADMIN, Role.TICKET_COUNTER, Role.EMPLOYEE, Role.USER).stream()
+        Role role = List.of(Role.ADMIN, Role.TICKET_COUNTER, Role.PERSONNEL, Role.EMPLOYEE, Role.USER).stream()
                 .filter(candidate -> hasRole(authentication, candidate.name()))
                 .findFirst()
                 .orElse(user.getRole());

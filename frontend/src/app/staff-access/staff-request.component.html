@@ -15,7 +15,7 @@
     </label>
     <label>Role
       <select name="role" [(ngModel)]="role" [disabled]="busy">
-        <option value="TICKET_COUNTER">Ticket counter</option>
+        <option value="TICKET_COUNTER">TICKET_COUNTER</option>
         <option value="ADMIN">Administrator</option>
       </select>
     </label>
@@ -27,7 +27,7 @@
 
   <section>
     <div class="access-heading">
-      <h2>Your requests</h2>
+      <h2>Your requests and assignments</h2>
       <button type="button" class="secondary" (click)="refresh()" [disabled]="busy">Check access</button>
     </div>
     @if (requests.length) {
@@ -35,11 +35,16 @@
         <thead><tr><th>Parking area</th><th>Role</th><th>Status</th></tr></thead>
         <tbody>
           @for (request of requests; track request.id) {
-            <tr>
-              <td>{{ request.areaName }}</td>
-              <td>{{ roleName[(request.requestedRole ?? request.grantedRole)!] }}</td>
-              <td>{{ request.requestedRole ? 'Pending approval' : 'Approved' }}</td>
-            </tr>
+            @if (request.requestedRole ?? request.grantedRole; as role) {
+              <tr>
+                <td>{{ request.areaName }}</td>
+                <td>{{ roleName[role] }}</td>
+                <td>{{ request.requestedRole ? 'Pending approval' : 'Approved' }}</td>
+              </tr>
+            }
+            @if (request.personnel) {
+              <tr><td>{{ request.areaName }}</td><td>Personnel</td><td>Assigned</td></tr>
+            }
           }
         </tbody>
       </table>
