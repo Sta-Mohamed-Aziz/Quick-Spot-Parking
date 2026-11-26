@@ -4,7 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { forkJoin, Observable } from 'rxjs';
 import { ParkingService } from '../parking.service';
-import { StaffAccess, StaffAccessService, StaffRole, staffRoleName } from './staff-access.service';
+import { StaffAccess, StaffAccessService, StaffGrantRole, staffRoleName } from './staff-access.service';
 
 @Component({
   selector: 'app-staff-management',
@@ -22,7 +22,7 @@ export class StaffManagementComponent implements OnInit {
   areaName = '';
   entries: StaffAccess[] = [];
   email = '';
-  role: StaffRole = 'TICKET_COUNTER';
+  role: StaffGrantRole = 'TICKET_COUNTER';
   busy = true;
   error = '';
   message = '';
@@ -32,7 +32,7 @@ export class StaffManagementComponent implements OnInit {
   }
 
   get staff() {
-    return this.entries.filter(entry => entry.grantedRole !== null);
+    return this.entries.filter(entry => entry.grantedRole !== null || entry.personnel);
   }
 
   ngOnInit() {
@@ -51,22 +51,24 @@ export class StaffManagementComponent implements OnInit {
 
   grant() {
     if (!this.email.trim() || this.busy) return;
-    this.save(this.access.grant(this.areaId, this.email.trim(), this.role), true);
+    const role = this.role;
+    this.save(this.access.grant(this.areaId, this.email.trim(), role), role);
   }
 
   approve(request: StaffAccess) {
     this.save(this.access.approve(this.areaId, request.id));
   }
 
-  private save(action: Observable<StaffAccess>, clearEmail = false) {
+  private save(action: Observable<StaffAccess>, selectedRole?: StaffGrantRole) {
     this.busy = true;
     this.error = '';
     this.message = '';
     action.subscribe({
       next: entry => {
         this.entries = [entry, ...this.entries.filter(existing => existing.id !== entry.id)];
-        this.message = `${entry.email} now has ${this.roleName[entry.grantedRole!].toLowerCase()} access.`;
-        if (clearEmail) this.email = '';
+        const role = selectedRole === 'PERSONNEL' ? selectedRole : entry.grantedRole!;
+        this.message = `${entry.email} now has ${this.roleName[role]} access.`;
+        if (selectedRole) this.email = '';
         this.busy = false;
       },
       error: error => this.showError(error, 'Could not grant access'),

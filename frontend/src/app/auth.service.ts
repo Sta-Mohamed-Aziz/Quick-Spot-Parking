@@ -21,7 +21,7 @@ export interface LoginRequest {
 const STORAGE_KEY = 'parking_admin_user';
 const API_BASE = 'http://localhost:8080/api';
 
-const WEB_ROLES = ['ADMIN', 'TICKET_COUNTER', 'EMPLOYEE'];
+const WEB_ROLES = ['ADMIN', 'TICKET_COUNTER', 'EMPLOYEE', 'PERSONNEL'];
 
 @Injectable({ providedIn: 'root' })
 export class AuthService {
@@ -53,7 +53,7 @@ export class AuthService {
   }
 
   get homeUrl(): string {
-    if (this._currentUser?.role === 'EMPLOYEE') return '/request-access';
+    if (this._currentUser?.role === 'EMPLOYEE' || this._currentUser?.role === 'PERSONNEL') return '/request-access';
     return this.isTicketCounter ? '/counter' : '/';
   }
 
@@ -73,7 +73,8 @@ export class AuthService {
   }
 
   register(name: string, email: string, password: string): Observable<User> {
-    return this.http.post<User>(`${API_BASE}/auth/staff-register`, { name, email, password }).pipe(
+    return this.http.get(`${API_BASE}/auth/csrf`).pipe(
+      switchMap(() => this.http.post<User>(`${API_BASE}/auth/staff-register`, { name, email, password })),
       tap(user => this.rememberWebUser(user))
     );
   }

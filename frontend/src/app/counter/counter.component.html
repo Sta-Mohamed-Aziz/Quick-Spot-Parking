@@ -53,6 +53,8 @@
             }
             @if (r.reported) {
               <span class="pill danger">Reported as non paying</span>
+            } @else if (r.paymentExempt) {
+              <span class="muted small">No parking fee</span>
             } @else if (canReport(r)) {
               <button class="report" (click)="openReport(r)">Report non-payment</button>
             }

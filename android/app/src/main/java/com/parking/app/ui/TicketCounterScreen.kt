@@ -212,6 +212,7 @@ private fun ReservationRow(r: CounterReservation, working: Boolean, onReport: ()
         )
         when {
             r.reported -> StatusPill("Reported as non paying", brand.danger, Modifier.padding(top = 12.dp))
+            r.paymentExempt -> Text("No parking fee", Modifier.padding(top = 12.dp))
             r.canReport -> SoftButton(
                 "Report non-payment",
                 onClick = onReport,

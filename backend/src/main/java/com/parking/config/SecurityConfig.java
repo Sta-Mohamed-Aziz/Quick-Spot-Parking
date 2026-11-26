@@ -62,20 +62,20 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST, "/api/auth/login", "/api/auth/register", "/api/auth/staff-register", "/api/auth/logout",
                                 "/api/auth/ban-status", "/api/auth/appeal").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/auth/me").authenticated()
-                        .requestMatchers("/api/staff-access/**").hasRole("EMPLOYEE")
-                        .requestMatchers(HttpMethod.GET, "/api/parking-areas/**", "/api/parking-spots/**").hasAnyRole("USER", "ADMIN")
-                        .requestMatchers(HttpMethod.HEAD, "/api/parking-areas/**", "/api/parking-spots/**").hasAnyRole("USER", "ADMIN")
+                        .requestMatchers("/api/staff-access/**").hasAnyRole("EMPLOYEE", "PERSONNEL")
+                        .requestMatchers(HttpMethod.GET, "/api/parking-areas/**", "/api/parking-spots/**").hasAnyRole("USER", "ADMIN", "PERSONNEL")
+                        .requestMatchers(HttpMethod.HEAD, "/api/parking-areas/**", "/api/parking-spots/**").hasAnyRole("USER", "ADMIN", "PERSONNEL")
                         .requestMatchers(HttpMethod.GET, "/api/users").hasRole("PLATFORM_ADMIN")
-                        .requestMatchers("/api/users/*").hasAnyRole("USER", "ADMIN", "TICKET_COUNTER")
+                        .requestMatchers("/api/users/*").hasAnyRole("USER", "ADMIN", "TICKET_COUNTER", "PERSONNEL")
                         // SCRUM-88: the ticket counter reports non paying users.
                         .requestMatchers("/api/counter/**").hasAnyRole("TICKET_COUNTER", "ADMIN")
                         .requestMatchers("/api/admin/areas/**", "/api/admin/stats/**").hasRole("ADMIN")
                         .requestMatchers("/api/admin/**", "/api/issues").hasRole("PLATFORM_ADMIN")
                         .requestMatchers(HttpMethod.POST, "/api/parking-areas").hasRole("PLATFORM_ADMIN")
                         .requestMatchers("/api/parking-areas/**", "/api/parking-spots/**").hasRole("ADMIN")
-                        .requestMatchers(issueSubmission).hasAnyRole("USER", "PLATFORM_ADMIN")
+                        .requestMatchers(issueSubmission).hasAnyRole("USER", "PLATFORM_ADMIN", "PERSONNEL")
                         .requestMatchers("/api/reservations/**").access(new WebExpressionAuthorizationManager(
-                                "isAnonymous() or hasAnyRole('USER', 'PLATFORM_ADMIN')"))
+                                "isAnonymous() or hasAnyRole('USER', 'PLATFORM_ADMIN', 'PERSONNEL')"))
                         .anyRequest().denyAll())
                 // No/expired session -> 401 so clients know to log in again; 403 stays for real permission errors.
                 .exceptionHandling(ex -> ex.authenticationEntryPoint(new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED)))

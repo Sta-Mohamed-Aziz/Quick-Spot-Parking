@@ -3,10 +3,12 @@ import { HttpClient } from '@angular/common/http';
 import { switchMap } from 'rxjs';
 
 export type StaffRole = 'ADMIN' | 'TICKET_COUNTER';
+export type StaffGrantRole = StaffRole | 'PERSONNEL';
 
-export const staffRoleName: Record<StaffRole, string> = {
+export const staffRoleName: Record<StaffGrantRole, string> = {
   ADMIN: 'Administrator',
-  TICKET_COUNTER: 'Ticket counter',
+  TICKET_COUNTER: 'TICKET_COUNTER',
+  PERSONNEL: 'Personnel',
 };
 
 export interface AreaChoice {
@@ -22,6 +24,7 @@ export interface StaffAccess {
   email: string;
   requestedRole: StaffRole | null;
   grantedRole: StaffRole | null;
+  personnel: boolean;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -45,7 +48,7 @@ export class StaffAccessService {
     return this.http.get<StaffAccess[]>(`${this.api}/admin/areas/${areaId}/staff`);
   }
 
-  grant(areaId: number, email: string, role: StaffRole) {
+  grant(areaId: number, email: string, role: StaffGrantRole) {
     return this.post(`/admin/areas/${areaId}/staff`, { email, role });
   }
 

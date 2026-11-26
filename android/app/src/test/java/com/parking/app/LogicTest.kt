@@ -73,6 +73,23 @@ class LogicTest {
     }
 
     @Test
+    fun areaDetailsReadUpdatedRatesAndDistinguishFreeSpots() {
+        val original = json.decodeFromString<ParkingArea>(
+            """{"id":1,"name":"Lac","bookingRates":{"currency":"TND","hourlyRates":{"12":1.500,"13":0}}}""",
+        )
+        val refreshed = json.decodeFromString<ParkingArea>(
+            """{"id":1,"name":"Lac","bookingRates":{"currency":"TND","hourlyRates":{"12":4.250,"13":0}}}""",
+        )
+        assertEquals(1.5, original.bookingRates!!.hourlyRates.getValue(12), 0.0)
+        val rates = refreshed.bookingRates!!
+        assertEquals("TND", rates.currency)
+        assertEquals(4.25, rates.hourlyRates.getValue(12), 0.0)
+        assertEquals(0.0, rates.hourlyRates.getValue(13), 0.0)
+        assertNull(rates.hourlyRates[14])
+        assertNull(json.decodeFromString<ParkingArea>("""{"id":1,"name":"Lac"}""").bookingRates)
+    }
+
+    @Test
     fun billingMatchesTheBackend() {
         val start = Instant.parse("2026-01-01T10:00:00Z")
         assertEquals(1, billedMinutes(start, start))

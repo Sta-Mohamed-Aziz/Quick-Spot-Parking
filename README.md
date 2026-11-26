@@ -146,6 +146,8 @@ All endpoints return JSON. The Angular app sends the session cookie and CSRF tok
 
 New areas are assigned to the admin who creates them. Admins can access areas they own or have administrator access to. Existing areas with a null `parking_area.admin_id` stay in the driver catalog. Set `admin_id` to the owning admin's `users.id` in PostgreSQL to show those areas in that admin's dashboard.
 
+In **Manage staff**, choose **Personnel** to grant an existing account free access to that area's Personnel spots. Personnel use their own signed-in account to reserve those spots. In the layout editor, use **Hourly rates** to set the area's Regular, EV and Handicap rates. Individual spot prices take precedence, and blank rates fall back to the system default. Reservations keep the rate recorded when they start.
+
 ## Editor
 
 - 1 square = 0.5 m, thick line every 5 m. All sizes are in metres.

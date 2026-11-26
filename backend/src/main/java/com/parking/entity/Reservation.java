@@ -69,6 +69,10 @@ public class Reservation {
         return endedAt == null;
     }
 
+    public boolean isPaymentExempt() {
+        return pricePerHour != null && pricePerHour.signum() == 0;
+    }
+
     /** Started minutes, at least one: 0:30 is 1 minute, 1:01 is 2 minutes. */
     public long getMinutes() {
         return minutesAt(endedAt != null ? endedAt : Instant.now());

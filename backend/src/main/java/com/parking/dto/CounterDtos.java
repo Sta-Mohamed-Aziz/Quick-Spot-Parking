@@ -28,7 +28,8 @@ public final class CounterDtos {
             BigDecimal amount,
             String currency,
             boolean active,
-            boolean reported) {
+            boolean reported,
+            boolean paymentExempt) {
 
         public static CounterReservation of(Reservation reservation, Integer userId, User user, boolean reported) {
             return new CounterReservation(
@@ -44,7 +45,8 @@ public final class CounterDtos {
                     reservation.getAmount(),
                     reservation.getCurrency(),
                     reservation.isActive(),
-                    reported);
+                    reported,
+                    reservation.isPaymentExempt());
         }
     }
 

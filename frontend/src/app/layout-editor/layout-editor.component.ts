@@ -1,18 +1,24 @@
 import { AfterViewInit, Component, ElementRef, HostListener, OnDestroy, ViewChild, inject } from '@angular/core';
 import { HttpErrorResponse } from '@angular/common/http';
+import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { ActiveSelection, Canvas, FabricObject, Group } from 'fabric';
 import { ParkingService } from '../parking.service';
-import { Item, ItemKind, Layout, PaletteEntry, ParkingArea, ParkingSpot, Pricing, SpotStatus, SpotType } from '../models';
+import { Item, ItemKind, Layout, PaletteEntry, ParkingArea, ParkingSpot, Pricing, SpotStatus, SpotType, SpotTypeRates } from '../models';
 import { PIXELS_PER_METER, byLayer, createPlanObject, findOverlaps, readPlanObject, snapToHalfMeter } from './plan-items';
 import { GoogleMap, MapMarker, MapPolyline, MapRectangle } from '@angular/google-maps';
 
+const RATE_KEY: Partial<Record<SpotType, keyof SpotTypeRates>> = {
+  REGULAR: 'regular',
+  EV: 'ev',
+  HANDICAPPED: 'handicapped',
+};
 
 
 @Component({
   selector: 'app-layout-editor',
   standalone: true,
-  imports: [RouterLink, GoogleMap, MapMarker, MapPolyline, MapRectangle],
+  imports: [FormsModule, RouterLink, GoogleMap, MapMarker, MapPolyline, MapRectangle],
   templateUrl: './layout-editor.component.html',
   styleUrl: './layout-editor.component.css',
 })
@@ -47,6 +53,16 @@ export class LayoutEditorComponent implements AfterViewInit, OnDestroy {
 
   area: ParkingArea | null = null;
   defaultPricing: Pricing | null = null;
+  readonly rateFields = [
+    { key: 'regular', label: 'Regular' },
+    { key: 'ev', label: 'EV' },
+    { key: 'handicapped', label: 'Handicap' },
+  ] as const;
+  rateDraft: SpotTypeRates = { regular: null, ev: null, handicapped: null };
+  rateMessage = '';
+  rateError = '';
+  savingRates = false;
+  private savedRates: SpotTypeRates | null = null;
   planWidth = 80;
   planHeight = 50;
   floors: Item[][] = [[]];
@@ -589,6 +605,29 @@ export class LayoutEditorComponent implements AfterViewInit, OnDestroy {
     });
   }
 
+  saveRates() {
+    if (!this.area || this.savingRates) return;
+    this.savingRates = true;
+    this.rateMessage = '';
+    this.rateError = '';
+    this.parkingService.updateRates(this.area.id, this.rateDraft).subscribe({
+      next: rates => {
+        this.savedRates = rates;
+        this.savingRates = false;
+        this.rateMessage = 'Hourly rates saved.';
+      },
+      error: (err: HttpErrorResponse) => {
+        this.savingRates = false;
+        this.rateError = err.error?.message ?? 'Could not save the hourly rates.';
+      },
+    });
+  }
+
+  spotDefaultRate(type: SpotType = 'REGULAR') {
+    const key = RATE_KEY[type];
+    return (key && this.savedRates?.[key]) ?? this.defaultPricing?.pricePerHour;
+  }
+
   @HostListener('window:keydown', ['$event'])
   onKeyDown(event: KeyboardEvent) {
     if (event.target instanceof HTMLInputElement || event.target instanceof HTMLSelectElement) {
@@ -610,6 +649,8 @@ export class LayoutEditorComponent implements AfterViewInit, OnDestroy {
   private load(area: ParkingArea) {
     const layout: Layout | null = area.layout ? JSON.parse(area.layout) : null;
     this.area = area;
+    this.savedRates = area.spotTypeRates ?? null;
+    if (this.savedRates) this.rateDraft = { ...this.savedRates };
     this.planWidth = layout?.width ?? 80;
     this.planHeight = layout?.height ?? 50;
     this.latitude = layout?.latitude ?? null;

@@ -59,7 +59,11 @@ data class ParkingArea(
     val longitude: Double? = null,
     val lat: Double? = null,
     val lng: Double? = null,
+    val bookingRates: BookingRates? = null,
 )
+
+@Serializable
+data class BookingRates(val currency: String, val hourlyRates: Map<Int, Double>)
 
 /** One shape of the plan. Sizes are in metres; (x, y) is the top-left corner and the shape is rotated around it. */
 @Serializable
@@ -147,9 +151,10 @@ data class CounterReservation(
     val currency: String,
     val active: Boolean,
     val reported: Boolean,
+    val paymentExempt: Boolean = false,
 ) {
     /** Only reservations of a registered user can be reported, once. */
-    val canReport: Boolean get() = userId != null && userName != null && !reported
+    val canReport: Boolean get() = userId != null && userName != null && !reported && !paymentExempt
 }
 
 @Serializable

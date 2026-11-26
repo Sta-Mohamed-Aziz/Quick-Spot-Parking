@@ -75,7 +75,9 @@ public class StaffAccessService {
 
     @Transactional
     public Access grant(int areaId, int adminId, String email, Role role) {
-        requireStaffRole(role);
+        if (role != Role.PERSONNEL) {
+            requireStaffRole(role);
+        }
         ParkingArea area = lockArea(areaId);
         requireAreaAdmin(areaId, adminId);
         if (email == null || email.isBlank()) {
@@ -83,11 +85,15 @@ public class StaffAccessService {
         }
         User user = activeUser(users.findByEmailIgnoreCase(email.trim()).orElseThrow(() ->
                 new ResponseStatusException(HttpStatus.NOT_FOUND, "No account found for that email")));
-        if (area.getAdmin() != null && user.getId().equals(area.getAdmin().getId())) {
+        if (role != Role.PERSONNEL && area.getAdmin() != null && user.getId().equals(area.getAdmin().getId())) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "This account already owns the parking area");
         }
         StaffAccess entry = entryFor(area, user);
-        grantRole(entry, role);
+        if (role == Role.PERSONNEL) {
+            entry.setPersonnel(true);
+        } else {
+            grantRole(entry, role);
+        }
         return Access.from(access.save(entry));
     }
 

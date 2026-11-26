@@ -1,10 +1,13 @@
 package com.parking.controller;
 
+import com.parking.dto.ParkingAreaDetails;
 import com.parking.dto.ParkingRequests.CreateParkingAreaRequest;
 import com.parking.dto.ParkingRequests.LayoutRequest;
 import com.parking.entity.ParkingArea;
+import com.parking.entity.SpotTypeRates;
 import com.parking.external.WeatherService;
 import com.parking.service.ParkingService;
+import com.parking.service.ReservationService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -21,6 +24,7 @@ import java.util.List;
 public class ParkingAreaController {
 
     private final ParkingService parkingService;
+    private final ReservationService reservationService;
     private final WeatherService weatherService;
 
     @GetMapping
@@ -29,8 +33,10 @@ public class ParkingAreaController {
     }
 
     @GetMapping("/{id}")
-    public ParkingArea getParkingArea(@PathVariable int id, Authentication caller) {
-        return parkingService.getParkingArea(id, caller);
+    public ParkingAreaDetails getParkingArea(@PathVariable int id, Authentication caller,
+                                             @AuthenticationPrincipal Integer accountId) {
+        ParkingArea area = parkingService.getParkingArea(id, caller);
+        return new ParkingAreaDetails(area, reservationService.bookingRates(area, accountId));
     }
 
     /** Current weather at the area, from the external Open-Meteo service. */
@@ -54,5 +60,11 @@ public class ParkingAreaController {
     public ParkingArea updateLayout(@PathVariable int id, @RequestBody LayoutRequest request,
                                     @AuthenticationPrincipal Integer adminId) {
         return parkingService.updateLayout(id, adminId, request);
+    }
+
+    @PutMapping("/{id}/rates")
+    public SpotTypeRates updateRates(@PathVariable int id, @RequestBody SpotTypeRates rates,
+                                     @AuthenticationPrincipal Integer adminId) {
+        return parkingService.updateRates(id, adminId, rates);
     }
 }

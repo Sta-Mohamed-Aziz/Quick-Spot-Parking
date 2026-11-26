@@ -62,7 +62,7 @@ public class StatsService {
         LocalDate from = starts.get(0).isBefore(today.withDayOfYear(1)) ? starts.get(0) : today.withDayOfYear(1);
 
         List<Reservation> paid = reservationRepository.findEarningsByAdmin(adminId, startOf(from)).stream()
-                .filter(r -> r.getAmount() != null)
+                .filter(r -> r.getAmount() != null && !r.isPaymentExempt())
                 .toList();
 
         Map<LocalDate, List<Reservation>> byBucket = paid.stream()

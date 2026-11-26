@@ -74,6 +74,9 @@ public class TicketCounterService {
                 || !parkingAreaRepository.findCounterAreaIds(ticketCounterId).contains(reservation.getAreaId()))) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Reservation not found");
         }
+        if (reservation.isPaymentExempt()) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "This reservation has no parking fee");
+        }
         Integer userId = parseUserId(reservation.getUserId());
         User user = userId == null ? null : userRepository.findById(userId).orElse(null);
         if (user == null) {

@@ -11,11 +11,11 @@ public final class StaffDtos {
     public record GrantAccess(String email, Role role) {}
 
     public record Access(Integer id, Integer areaId, String areaName, String name, String email,
-                         Role requestedRole, Role grantedRole) {
+                         Role requestedRole, Role grantedRole, boolean personnel) {
         public static Access from(StaffAccess access) {
             return new Access(access.getId(), access.getArea().getId(), access.getArea().getName(),
                     access.getUser().getName(), access.getUser().getEmail(),
-                    access.getRequestedRole(), access.getGrantedRole());
+                    access.getRequestedRole(), access.getGrantedRole(), access.isPersonnel());
         }
     }
 }

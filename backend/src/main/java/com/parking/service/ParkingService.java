@@ -7,6 +7,7 @@ import com.parking.entity.ParkingSpot;
 import com.parking.entity.SpotPrice;
 import com.parking.entity.SpotStatus;
 import com.parking.entity.SpotType;
+import com.parking.entity.SpotTypeRates;
 import com.parking.repository.ParkingAreaRepository;
 import com.parking.repository.ParkingSpotRepository;
 import com.parking.repository.UserRepository;
@@ -30,6 +31,7 @@ import java.util.Optional;
 public class ParkingService {
 
     private static final SimpleGrantedAuthority ADMIN_AUTHORITY = new SimpleGrantedAuthority("ROLE_ADMIN");
+    private static final BigDecimal MAX_HOURLY_RATE = new BigDecimal("9999999.999");
 
     private final ParkingAreaRepository parkingAreaRepository;
     private final ParkingSpotRepository parkingSpotRepository;
@@ -63,6 +65,16 @@ public class ParkingService {
     }
 
     @Transactional
+    public SpotTypeRates updateRates(int areaId, int adminId, SpotTypeRates rates) {
+        ParkingArea area = findArea(areaId, adminId);
+        validateRate(rates.regular(), "Regular");
+        validateRate(rates.ev(), "EV");
+        validateRate(rates.handicapped(), "Handicap");
+        area.setSpotTypeRates(rates);
+        return rates;
+    }
+
+    @Transactional
     public ParkingArea updateLayout(int areaId, int adminId, LayoutRequest request) {
         if (request == null || request.layout() == null || request.spots() == null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Layout and spots are required");
@@ -74,7 +86,7 @@ public class ParkingService {
         for (LayoutRequest.Spot spot : request.spots()) {
             requestedSpots.put(spot.number(), spot.type());
             if (spot.pricePerHour() != null) {
-                if (spot.pricePerHour().compareTo(BigDecimal.ZERO) < 0) {
+                if (spot.pricePerHour().signum() < 0) {
                     throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
                             "The price of spot " + spot.number() + " cannot be negative");
                 }
@@ -125,6 +137,14 @@ public class ParkingService {
             spot.updateStatus(request.status());
         }
         return spot;
+    }
+
+    private static void validateRate(BigDecimal rate, String label) {
+        if (rate != null && (rate.signum() < 0 || rate.compareTo(MAX_HOURLY_RATE) > 0
+                || rate.stripTrailingZeros().scale() > 3)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    label + " rate must be between 0 and 9,999,999.999 with up to three decimal places");
+        }
     }
 
     private ParkingArea findArea(int id, Integer adminId) {
